@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
 
-[[ -z "$DEPS_SCRIPT_GENTOO_REPO" ]] && {
-    echo "Please setup the DEPS_SCRIPT_GENTOO_REPO env"; exit
-}
-
-[[ -z "$DEPS_SCRIPT_GURU_REPO" ]] && {
-    echo "Please setup the DEPS_SCRIPT_GURU_REPO env"; exit
-}
-
 [[ -z "$DEPS_SCRIPT_GITHUB_ENABLE" || "$DEPS_SCRIPT_GITHUB_ENABLE" == true ]] && {
     command -v gh > /dev/null 2>&1 || {
         echo "Please install github cli"; exit
@@ -19,9 +11,18 @@ gh auth status > /dev/null || {
     gh auth
 }
 
-# shellcheck disable=SC2015
-[[ "$2" == "guru"  ]] && depfilesRepo="$DEPS_SCRIPT_GURU_REPO" || {
-    [[ "$2" == "gentoo" ]] && depfilesRepo="$DEPS_SCRIPT_GENTOO_REPO" || exit
+[[ -z "$DEPS_SCRIPT_REPO" ]] && {
+    git ls-remote --get-url | grep -qE '/guru[^/]+$' && {
+        [[ -z "$DEPS_SCRIPT_GURU_REPO" ]] && {
+            echo "Please setup the DEPS_SCRIPT_GURU_REPO env"; exit
+        } || DEPS_SCRIPT_REPO="$DEPS_SCRIPT_GURU_REPO"
+    } || {
+        git ls-remote --get-url | grep -qE '/gentoo[^/]+$' && {
+            [[ -z "$DEPS_SCRIPT_GENTOO_REPO" ]] && {
+                echo "Please setup the DEPS_SCRIPT_GENTOO_REPO env"; exit
+            } || DEPS_SCRIPT_REPO="$DEPS_SCRIPT_GENTOO_REPO"
+        } || exit
+    }
 }
 
 export XZ_OPTS="-9e -T0"
@@ -47,14 +48,14 @@ done
 cd "$sourcePath" || exit
 
 depfileName="$package-deps.tar.xz"
-if [[ "$3" == "go" ]]; then
+if [[ "$2" == "go" ]]; then
     GOMODCACHE="$sourcePath/go-mod" go mod download -modcacherw -x || {
         error="$?"
         echo "go vendor creation failed"
         exit "$error"
     }
     COMPRESS_DIR="go-mod"
-elif [[ "$3" == "rust" ]]; then
+elif [[ "$2" == "rust" ]]; then
     cargo vendor || {
         error="$?"
         echo "cargo vendor creation failed"
