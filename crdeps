@@ -14,6 +14,11 @@
     };
 }
 
+gh auth status > /dev/null || {
+    echo "please authenticate the github cli tool"
+    gh auth
+}
+
 # shellcheck disable=SC2015
 [[ "$2" == "guru"  ]] && depfilesRepo="$DEPS_SCRIPT_GURU_REPO" || {
     [[ "$2" == "gentoo" ]] && depfilesRepo="$DEPS_SCRIPT_GENTOO_REPO" || exit
