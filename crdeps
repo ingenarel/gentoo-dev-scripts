@@ -73,7 +73,7 @@ gh\
     create\
     "$depfileName"\
     "$depfileName"\
-    --repo "$depfilesRepo"\
+    --repo "$DEPS_SCRIPT_REPO"\
     --latest\
     --notes "$depfileName"\
     --title "$depfileName"
