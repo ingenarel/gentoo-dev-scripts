@@ -48,14 +48,14 @@ done
 cd "$sourcePath" || exit
 
 depfileName="$package-deps.tar.xz"
-if [[ "$2" == "go" ]]; then
+if grep -qE '^\s*inherit.+go-module.*' || [[ "$2" == "go" ]]; then
     GOMODCACHE="$sourcePath/go-mod" go mod download -modcacherw -x || {
         error="$?"
         echo "go vendor creation failed"
         exit "$error"
     }
     COMPRESS_DIR="go-mod"
-elif [[ "$2" == "rust" ]]; then
+elif grep -qE '^\s*inherit.+cargo.*' || [[ "$2" == "rust" ]]; then
     cargo vendor || {
         error="$?"
         echo "cargo vendor creation failed"
