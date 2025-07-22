@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+mainEbuildFilePath="$(realpath "$1")"
+
 [[ -z "$DEPS_SCRIPT_GITHUB_ENABLE" || "$DEPS_SCRIPT_GITHUB_ENABLE" == true ]] && {
     command -v gh > /dev/null 2>&1 || {
         echo "Please install github cli"; exit
@@ -48,14 +50,14 @@ done
 cd "$sourcePath" || exit
 
 depfileName="$package-deps.tar.xz"
-if grep -qE '^\s*inherit.+go-module.*' "$(realpath "$1")" || [[ "$2" == "go" ]]; then
+if grep -qE '^\s*inherit.+go-module.*' "$mainEbuildFilePath" || [[ "$2" == "go" ]]; then
     GOMODCACHE="$sourcePath/go-mod" go mod download -modcacherw -x || {
         error="$?"
         echo "go vendor creation failed"
         exit "$error"
     }
     COMPRESS_DIR="go-mod"
-elif grep -qE '^\s*inherit.+cargo.*' "$(realpath "$1")" || [[ "$2" == "rust" ]]; then
+elif grep -qE '^\s*inherit.+cargo.*' "$mainEbuildFilePath" || [[ "$2" == "rust" ]]; then
     cargo vendor || {
         error="$?"
         echo "cargo vendor creation failed"
