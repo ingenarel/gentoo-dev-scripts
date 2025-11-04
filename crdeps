@@ -16,12 +16,12 @@ gh auth status > /dev/null || {
 }
 
 [[ -z "$DEPS_SCRIPT_REPO" ]] && {
-    git ls-remote --get-url | grep -qE '/guru[^/]+$' && {
+    git remote -v | grep -qE '/guru[^/]+$' && {
         [[ -z "$DEPS_SCRIPT_GURU_REPO" ]] && {
             echo "Please setup the DEPS_SCRIPT_GURU_REPO env"; exit
         } || DEPS_SCRIPT_REPO="$DEPS_SCRIPT_GURU_REPO"
     } || {
-        git ls-remote --get-url | grep -qE '/gentoo[^/]+$' && {
+        git remote -v | grep -qE '/gentoo[^/]+$' && {
             [[ -z "$DEPS_SCRIPT_GENTOO_REPO" ]] && {
                 echo "Please setup the DEPS_SCRIPT_GENTOO_REPO env"; exit
             } || DEPS_SCRIPT_REPO="$DEPS_SCRIPT_GENTOO_REPO"
