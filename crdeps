@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+export DISTDIR=/tmp/crdeps/distfiles
+
 mainEbuildFilePath="$(realpath "$1")"
 
 [[ -z "$DEPS_SCRIPT_GITHUB_ENABLE" || "$DEPS_SCRIPT_GITHUB_ENABLE" == true ]] && {
