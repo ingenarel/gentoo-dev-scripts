@@ -1,0 +1,12 @@
+#!/usr/bin/sh
+
+echo "# dependency licenses:"
+printf 'LICENSE+=" '
+
+go-licenses report ./... 2>/dev/null |
+awk -F ',' '{ print $NF }' |
+sort --unique |
+sed -e "$(sed -n -E 's|^(\S+)\s*=\s*(\S+)$|s/\1/\2/;|p' /var/db/repos/gentoo/metadata/license-mapping.conf)" |
+tr '[:space:]' ' '
+
+echo '"'
