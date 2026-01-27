@@ -18,7 +18,7 @@ cp "$fullEbuildPath" "$fullEbuildPath.back"
 while IFS='' read -r line; do
     # using grep instead of a case statement because of easier regex like '^\s*LICENSE'
     if grep -qE '^\s*LICENSE=' <<< "$line"; then
-        printf '%s\n#gentoo-go-license %s\nLICENSE+="' "$line" "$ebuildName.ebuild"
+        printf '%s\n#gentoo-go-license %s\nLICENSE+=" ' "$line" "$ebuildName.ebuild"
         go-licenses report ./... 2>/dev/null |
         awk -F ',' '{ print $NF }' |
         sort --unique |
