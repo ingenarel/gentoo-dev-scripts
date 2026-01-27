@@ -1,12 +1,36 @@
-#!/usr/bin/sh
+#!/usr/bin/env bash
 
-echo "# dependency licenses:"
-printf 'LICENSE+=" '
+export DISTDIR=/tmp/go-licenses/distfiles
 
-go-licenses report ./... 2>/dev/null |
-awk -F ',' '{ print $NF }' |
-sort --unique |
-sed -e "$(sed -n -E 's|^(\S+)\s*=\s*(\S+)$|s/\1/\2/;|p' /var/db/repos/gentoo/metadata/license-mapping.conf)" |
-tr '[:space:]' ' '
+fullEbuildPath="$(realpath "$1")"
+ebuildName="$( basename "$fullEbuildPath" .ebuild )"
+ebuildParentDir="$( basename "$( realpath --canonicalize-missing "$1/.." )" )"
+ebuildParentParentDir="$( basename "$( realpath --canonicalize-missing "$1/../.." )" )"
 
-echo '"'
+# echo "$ebuildName"
+# echo "$ebuildParentDir"
+# echo "$ebuildParentParentDir"
+
+ebuild "$1" manifest fetch unpack
+cd "$(find "/var/tmp/portage/$ebuildParentParentDir/$ebuildName/work" -maxdepth 1 -name "$ebuildParentDir*" | head -n1)" || exit 1
+
+cp "$fullEbuildPath" "$fullEbuildPath.back"
+while IFS='' read -r line; do
+    # using grep instead of a case statement because of easier regex like '^\s*LICENSE'
+    if grep -qE '^\s*LICENSE=' <<< "$line"; then
+        printf '%s\n#gentoo-go-license %s\nLICENSE+="' "$line" "$ebuildName.ebuild"
+        go-licenses report ./... 2>/dev/null |
+        awk -F ',' '{ print $NF }' |
+        sort --unique |
+        sed -e "$(sed -n -E 's|^(\S+)\s*=\s*(\S+)$|s/\1/\2/;|p' /var/db/repos/gentoo/metadata/license-mapping.conf)" |
+        tr '[:space:]' ' '
+        printf '"\n'
+    elif grep -qE '^\s*#gentoo-go-license' <<< "$line"; then
+        :
+    elif grep -qE '^\s*LICENSE\+=' <<< "$line"; then
+        :
+    else
+        printf '%s\n' "$line"
+    fi
+done < "$fullEbuildPath.back" > "$fullEbuildPath"
+rm "$fullEbuildPath.back"
