@@ -1,31 +1,44 @@
 #!/usr/bin/env bash
 
+die(){
+    for (( i = "${#1}"; i > 0; i-- )); do
+        printf "="
+    done
+    printf "\n%s\n" "$1"
+
+    secondBreak="$( for (( i = "${#0}"; i > 0; i-- )); do
+        printf "="
+    done)"
+
+    echo "$secondBreak"
+    echo "$0"
+    echo "$secondBreak"
+    exit 1
+}
+
 export DISTDIR=/tmp/crdeps/distfiles
 
 mainEbuildFilePath="$(realpath "$1")"
 
 [[ -z "$DEPS_SCRIPT_GITHUB_ENABLE" || "$DEPS_SCRIPT_GITHUB_ENABLE" == true ]] && {
-    command -v gh > /dev/null 2>&1 || {
-        echo "Please install github cli"; exit
-    };
-}
-
-gh auth status > /dev/null || {
-    echo "please authenticate the github cli tool"
-    gh auth
+    command -v gh > /dev/null 2>&1 || die "Please install github cli"
+    gh auth status > /dev/null || {
+        echo "please authenticate the github cli tool"
+        gh auth login
+    }
 }
 
 [[ -z "$DEPS_SCRIPT_REPO" ]] && {
     git remote -v | grep -qE '/guru[^/]+$' && {
         [[ -z "$DEPS_SCRIPT_GURU_REPO" ]] && {
-            echo "Please setup the DEPS_SCRIPT_GURU_REPO env"; exit
+            die "Please setup the DEPS_SCRIPT_GURU_REPO env"
         } || DEPS_SCRIPT_REPO="$DEPS_SCRIPT_GURU_REPO"
     } || {
         git remote -v | grep -qE '/gentoo[^/]+$' && {
             [[ -z "$DEPS_SCRIPT_GENTOO_REPO" ]] && {
-                echo "Please setup the DEPS_SCRIPT_GENTOO_REPO env"; exit
+                die "Please setup the DEPS_SCRIPT_GENTOO_REPO env"
             } || DEPS_SCRIPT_REPO="$DEPS_SCRIPT_GENTOO_REPO"
-        } || exit
+        } || die "couldn't figure out a valid repo for deps"
     }
 }
 
@@ -49,34 +62,36 @@ for dir in "/var/tmp/portage/$( realpath "$1"\ | awk -F '/' '{print $(NF-2)}')/$
     }
 done
 
-cd "$sourcePath" || exit
+cd "$sourcePath" || die "cd to sourcepath failed"
 
 depfileName="$package-deps.tar.xz"
 if grep -qE '^\s*inherit.+go-module.*' "$mainEbuildFilePath" || [[ "$2" == "go" ]]; then
-    GOMODCACHE="$sourcePath/go-mod" go mod download -modcacherw -x || {
-        error="$?"
-        echo "go vendor creation failed"
-        exit "$error"
-    }
-    COMPRESS_DIR="go-mod"
+    GOMODCACHE="$sourcePath/go-mod" go mod download -modcacherw -x ||
+        die "go mod cache creation failed"
+
+    tar --create --verbose --auto-compress --file "$package-go-mod-deps.tar.xz" "go-mod" ||
+        die "go mod cache tar creation failed"
+
+    rm -rf go-mod || die "can't remove go-mod dir"
+
+    go mod vendor || die "go vendor creation failed"
+
+    tar --create --verbose --auto-compress --file "$package-vendor-deps.tar.xz" "vendor" ||
+        die "go vendor tar creation failed"
+
 elif grep -qE '^\s*inherit.+cargo.*' "$mainEbuildFilePath" || [[ "$2" == "rust" ]]; then
-    cargo vendor || {
-        error="$?"
-        echo "cargo vendor creation failed"
-        exit "$error"
-    }
-    COMPRESS_DIR="vendor"
+    cargo vendor || die "cargo vendor creation failed"
+    tar --create --verbose --auto-compress --file "$depfileName" "vendor" ||
+        die "cargo vendor tar creation failed"
 else
-    echo "invalid shit"
-    exit
+    die "current lang is either not support or not properly guessed"
 fi
 
-tar --create --verbose --auto-compress --file "$depfileName" "$COMPRESS_DIR"
 gh\
     release\
     create\
     "$depfileName"\
-    "$depfileName"\
+    ./*-deps.tar.xz\
     --repo "$DEPS_SCRIPT_REPO"\
     --latest\
     --notes "$depfileName"\
