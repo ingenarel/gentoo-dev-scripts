@@ -17,6 +17,8 @@ die(){
 }
 
 export DISTDIR=/tmp/crdeps/distfiles
+export PKGDIR=/tmp/crdeps/binpkgs
+export PORTAGE_TMPDIR=/tmp/crdeps/tmp
 
 mainEbuildFilePath="$(realpath "$1")"
 
