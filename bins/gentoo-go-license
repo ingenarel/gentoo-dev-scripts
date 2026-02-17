@@ -4,6 +4,17 @@ export DISTDIR=/tmp/go-licenses/distfiles
 export PKGDIR=/tmp/go-licenses/binpkgs
 export PORTAGE_TMPDIR=/tmp/go-licenses/tmp
 
+showHelp() {
+    printf "
+gentoo-go-license EBUILD_FILE_PATH
+EBUILD_FILE_PATH should be the ebuild file path; passed in as an argument
+
+updates the LICENSE+= var
+\n"
+}
+
+{ [ -n "$1" ] && [ -e "$1" ]; } || showHelp && exit
+
 fullEbuildPath="$(realpath "$1")"
 ebuildName="$( basename "$fullEbuildPath" .ebuild )"
 ebuildParentDir="$( basename "$( realpath --canonicalize-missing "$1/.." )" )"
