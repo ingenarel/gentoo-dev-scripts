@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-die(){
+die() {
     for (( i = "${#1}"; i > 0; i-- )); do
         printf "="
     done
@@ -16,7 +16,7 @@ die(){
     exit 1
 }
 
-showHelp(){
+showHelp() {
     printf "
 crdeps EBUILD_FILE_PATH LANGUAGE
 EBUILD_FILE_PATH should be the ebuild file path; passed in as an argument
