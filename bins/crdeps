@@ -49,11 +49,15 @@ Else if it detects the remote as ::guru it tries to use the DEPS_SCRIPT_GURU_REP
 \n"
 }
 
-{ [ -n "$1" ] && [ -e "$1" ]; } || showHelp && exit
+{ [ -n "$1" ] && [ -e "$1" ]; } || { showHelp && exit; }
 
 export DISTDIR=/tmp/crdeps/distfiles
 export PKGDIR=/tmp/crdeps/binpkgs
 export PORTAGE_TMPDIR=/tmp/crdeps/tmp
+
+[ ! -d "$DISTDIR" ] && mkdir --parents "$DISTDIR"
+[ ! -d "$PKGDIR" ] && mkdir --parents "$PKGDIR"
+[ ! -d "$PORTAGE_TMPDIR" ] && mkdir --parents "$PORTAGE_TMPDIR"
 
 mainEbuildFilePath="$(realpath "$1")"
 
@@ -102,7 +106,7 @@ done
 cd "$sourcePath" || die "cd to sourcepath failed"
 
 depfileName="$package-deps.tar.xz"
-if grep -qE '^\s*inherit.+go-module.*' "$mainEbuildFilePath" || [[ "$2" == "go" ]]; then
+if [[ "$2" == "go" ]] || grep -qE '^\s*inherit.+go-module.*' "$mainEbuildFilePath"; then
     GOMODCACHE="$sourcePath/go-mod" go mod download -modcacherw -x ||
         die "go mod cache creation failed"
 
@@ -116,10 +120,18 @@ if grep -qE '^\s*inherit.+go-module.*' "$mainEbuildFilePath" || [[ "$2" == "go" 
     tar --create --verbose --auto-compress --file "$package-vendor-deps.tar.xz" "vendor" ||
         die "go vendor tar creation failed"
 
-elif grep -qE '^\s*inherit.+cargo.*' "$mainEbuildFilePath" || [[ "$2" == "rust" ]]; then
+elif [[ "$2" == "rust" ]] || grep -qE '^\s*inherit.+cargo.*' "$mainEbuildFilePath"; then
     cargo vendor || die "cargo vendor creation failed"
     tar --create --verbose --auto-compress --file "$depfileName" "vendor" ||
         die "cargo vendor tar creation failed"
+elif [[ "$2" == "nim" ]]; then
+    nimble build --localdeps || die "nimble failed to build package with local deps"
+    # tar --create --verbose --auto-compress --file "$depfileName" "vendor" ||
+    #     die "cargo vendor tar creation failed"
+
+# find nimbledeps -exec file --mime-type {} \; |
+# sed -nE 's/^(.+): (text\/\S+|application\/json)$/\1/p' |
+# xargs tar --create --verbose --file nimbledeps.tar.xz
 else
     die "current lang is either not support or not properly guessed"
 fi

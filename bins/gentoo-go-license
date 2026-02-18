@@ -4,6 +4,10 @@ export DISTDIR=/tmp/go-licenses/distfiles
 export PKGDIR=/tmp/go-licenses/binpkgs
 export PORTAGE_TMPDIR=/tmp/go-licenses/tmp
 
+[ ! -d "$DISTDIR" ] && mkdir --parents "$DISTDIR"
+[ ! -d "$PKGDIR" ] && mkdir --parents "$PKGDIR"
+[ ! -d "$PORTAGE_TMPDIR" ] && mkdir --parents "$PORTAGE_TMPDIR"
+
 showHelp() {
     printf "
 gentoo-go-license EBUILD_FILE_PATH
@@ -13,7 +17,7 @@ updates the LICENSE+= var
 \n"
 }
 
-{ [ -n "$1" ] && [ -e "$1" ]; } || showHelp && exit
+{ [ -n "$1" ] && [ -e "$1" ]; } || { showHelp && exit; }
 
 fullEbuildPath="$(realpath "$1")"
 ebuildName="$( basename "$fullEbuildPath" .ebuild )"
