@@ -90,7 +90,7 @@ ebuild "$1" manifest fetch unpack
 
 packageFirst="$(echo "$package" | grep -oE '^[a-zA-Z0-9]+')"
 
-for dir in "/var/tmp/portage/$( realpath "$1"\ | awk -F '/' '{print $(NF-2)}')/$package/work/"*; do
+for dir in "$PORTAGE_TMPDIR/portage/$( realpath "$1"\ | awk -F '/' '{print $(NF-2)}')/$package/work/"*; do
     [[
         "$(echo "$dir" | grep -oE "[^/]+$")" == "$packageFirst"*\
             &&
