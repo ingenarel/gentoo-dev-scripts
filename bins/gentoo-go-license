@@ -29,7 +29,7 @@ ebuildParentParentDir="$( basename "$( realpath --canonicalize-missing "$1/../..
 # echo "$ebuildParentParentDir"
 
 ebuild "$1" manifest fetch unpack
-cd "$(find "/var/tmp/portage/$ebuildParentParentDir/$ebuildName/work" -maxdepth 1 -name "$ebuildParentDir*" | head -n1)" || exit 1
+cd "$(find "$PORTAGE_TMPDIR/portage/$ebuildParentParentDir/$ebuildName/work" -maxdepth 1 -name "$ebuildParentDir*" | head -n1)" || exit 1
 
 cp "$fullEbuildPath" "$fullEbuildPath.back"
 while IFS='' read -r line; do
