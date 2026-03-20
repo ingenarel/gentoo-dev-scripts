@@ -22,8 +22,10 @@ parseHelp(){
 }
 
 {
-    printf '# crdeps\n'
-    parseHelp ./bins/crdeps
-    printf '\n\n# gentoo-go-license\n'
-    parseHelp ./bins/gentoo-go-license
+    find ./bins -type f -executable | while IFS='' read -r line; do
+        printf '# %s\n' "$(basename "$line")"
+        parseHelp "$line"
+        printf '\n\n'
+    done
+    # }
 } > ./readme.md

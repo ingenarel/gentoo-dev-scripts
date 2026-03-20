@@ -1,0 +1,154 @@
+#!/bin/sh
+
+die(){
+    i="${#1}"; while [ "$i" -gt 0 ]; do
+        printf "="
+        i=$(( i-1 ))
+    done
+    printf "\n%s\n" "$1"
+
+    secondBreak="$(i="${#0}"; while [ "$i" -gt 0 ]; do
+        printf "="
+        i=$(( i-1 ))
+    done)"
+
+    echo "$secondBreak"
+    echo "$0"
+    echo "$secondBreak"
+    exit 1
+}
+
+printVariable(){
+    printf '# apply-crates-fixes start\n'
+    [ "$4" = 1 ] && {
+        printf "%s+" "$2"
+        } || {
+        printf "%s" "$2"
+    }
+    printf "=\"$3\n\"\n# apply-crates-fixes end\n"
+}
+
+sanitizeEbuild(){
+    IGNORE_LINES=false
+    while IFS='' read -r line; do
+        case "$line" in
+            "# apply-crates-fixes start")
+                IGNORE_LINES=true
+                ;;
+            "# apply-crates-fixes end")
+                IGNORE_LINES=false
+                ;;
+            *)
+                $IGNORE_LINES || {
+                    printf '%s\n' "$line"
+                }
+                ;;
+        esac
+    done < "$1"
+}
+
+addVariableToEbuild(){
+    # 1: filepath
+    # 2: variable name to check
+    # 3: variable name to append
+    # 4: appended variable data
+    # 5: variable load order
+    # 6: if variable should be appended or not
+    MULTILINE_VAR=false
+    VARIABLE_PRINTED=false
+    EBUILD_DATA=""
+    while IFS='' read -r line; do
+        # it will currently only try to append after the variables that were assigned using `VAR=`, and not `VAR+=`,
+        # however it wont technically break an ebuild, so i'm not currently implementing a fix now, which would be kinda
+        # complex to implement
+        case "$line" in
+            "$2=\""*\")
+                EBUILD_DATA="$EBUILD_DATA$line\n"
+                EBUILD_DATA="$EBUILD_DATA$( printVariable "$1" "$3" "$4" "$6")\n"
+                VARIABLE_PRINTED=true
+                ;;
+            "$2=\"")
+                EBUILD_DATA="$EBUILD_DATA$line\n"
+                MULTILINE_VAR=true
+                ;;
+            '"')
+                EBUILD_DATA="$EBUILD_DATA$line\n"
+                $MULTILINE_VAR && {
+                    EBUILD_DATA="$EBUILD_DATA$( printVariable "$1" "$3" "$4" "$6")\n"
+                    VARIABLE_PRINTED=true
+                    MULTILINE_VAR=false
+                }
+                ;;
+            *)
+                EBUILD_DATA="$EBUILD_DATA$line\n"
+        esac
+    done < "$1"
+    if $VARIABLE_PRINTED; then
+        printf "%b" "$EBUILD_DATA"
+    else
+        if [ -n "$5" ]; then
+            firstVar="$( printf "$5" | grep -oE '^\S+' )"
+            loadOrder="$( printf "$5" | sed -E "s|^$firstVar ||" )"
+            # echo "'$firstVar'"
+            # echo "'$loadOrder'"
+            addVariableToEbuild "$1" "$firstVar" "$3" "$4" "$loadOrder"
+        else
+            echo "loadOrder is empty" 2>&1
+        fi
+        # addVariableToEbuild "$1" "$previousVar" "$3" "$4" "$5"
+    fi
+}
+
+# prependDataToFunction(){
+#     # 1: filepath
+#     # 2: function name to check
+#     # 3: function name to append
+#     # 4: appended function data
+#     # 5: function load order
+# }
+
+showHelp(){
+    printf "
+apply-crates-fixes EBUILD_FILE_PATH
+
+EBUILD_FILE_PATH should be the ebuild file path; passed in as an argument
+
+depends on:
+	- /bin/sh executable that's a posix sh compliant shell or symlinked to one
+	- sort command that has --version-sort (GNU sort will do)
+\n"
+}
+
+{ [ -n "$1" ] && [ -e "$1" ]; } || { showHelp && exit; }
+
+mainEbuildFilePath="$(realpath "$1")"
+
+deps=""
+
+grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && {
+    zstd_crate_version="$(sed -nE 's|^\s*zstd@?([0-9.]+)$|\1|p' "$mainEbuildFilePath" )"
+    [ -z "$zstd_crate_version" ] &&
+    die "zstd-sys crate was detected however no zstd crate was detected"
+    printf '%s\n%s' '0.12.2' "$zstd_crate_version" | sort --version-sort --check=quiet && {
+        zstd_version_from_zstd_sys_crate="$(
+			sed -nE 's|^\s*zstd-sys@\S+\+zstd\.(\S+)|\1|p' "$mainEbuildFilePath"
+		)"
+        [ -z "$zstd_version_from_zstd_sys_crate" ] &&
+        die "couldn't get the minimum version for app-arch/zstd by trying to parse the zstd-sys crate"
+        deps="$deps\n\t>=app-arch/zstd-$zstd_version_from_zstd_sys_crate"
+    }
+}
+
+# i'm sleep deprived and can't figure out the proper way to properly use pipes and stdins and files as args so i'm using
+# temporary files
+
+sanitizeEbuild "$mainEbuildFilePath" > "$mainEbuildFilePath.sanitized"
+
+if [ -n "$deps" ]; then
+    addVariableToEbuild "$mainEbuildFilePath.sanitized" DEPEND DEPEND "$deps"\
+        'RESTRICT PROPERTIES REQUIRED_USE IUSE KEYWORDS SLOT LICENSE SRC_URI' 1
+else
+    cat "$mainEbuildFilePath.sanitized"
+fi
+
+rm "$mainEbuildFilePath.sanitized"

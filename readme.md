@@ -34,3 +34,15 @@ gentoo-go-license EBUILD_FILE_PATH
 EBUILD_FILE_PATH should be the ebuild file path; passed in as an argument
 
 updates the LICENSE+= var
+
+
+# apply-crates-fixes
+apply-crates-fixes EBUILD_FILE_PATH
+
+EBUILD_FILE_PATH should be the ebuild file path; passed in as an argument
+
+depends on:
+	- /bin/sh executable that's a posix sh compliant shell or symlinked to one
+	- sort command that has --version-sort (GNU sort will do)
+
+
