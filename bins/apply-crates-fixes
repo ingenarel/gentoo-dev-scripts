@@ -279,5 +279,5 @@ fi
 
 rm "$mainEbuildFilePath.sanitized"
 rm "$mainEbuildFilePath.depsfixes"
-cat "$mainEbuildFilePath.compilefixes"
+cp "$mainEbuildFilePath.compilefixes" "$mainEbuildFilePath"
 rm "$mainEbuildFilePath.compilefixes"
