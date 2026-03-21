@@ -251,6 +251,20 @@ grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && {
     }
 }
 
+# probably not needed:
+# core-foundation-sys
+# dirs-sys
+# jni-sys
+
+# TODO: (includes bundled deps, probably can fix? idk)
+# aws-lc-sys (https://github.com/aws/aws-lc-rs)
+# libfuzzer-sys(https://github.com/rust-fuzz/libfuzzer):
+#   - needs /usr/lib/clang/22/lib/linux/libclang_rt.fuzzer-x86_64.a, clang should be a dep
+# liblzma-sys (https://github.com/Portable-Network-Archive/liblzma-rs):
+#   - needs xz lzma stuff?
+# ring(https://crates.io/crates/ring)
+#   - includes fiat something something boringssl something something, i would need to recheck
+
 # i'm sleep deprived and can't figure out the proper way to properly use pipes and stdins and files as args so i'm using
 # temporary files
 
