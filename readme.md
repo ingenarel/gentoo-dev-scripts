@@ -42,7 +42,16 @@ apply-crates-fixes EBUILD_FILE_PATH
 EBUILD_FILE_PATH should be the ebuild file path; passed in as an argument
 
 depends on:
-	- /bin/sh executable that's a posix sh compliant shell or symlinked to one
-	- sort command that has --version-sort (GNU sort will do)
+- /bin/sh executable that's a posix sh compliant shell or symlinked to one
+- sort command that has --version-sort (GNU sort will do)
+- sed and grep
+
+features:
+- auto fixes the ebuild
+- doesn't fix the ebuild if it's not needed
+- autoremoves the fixes if it detects it's not needed anymore
+- implements a proper load order for inserting variables and functions and tries to maintain the order from the
+  devmanual
+
 
 
