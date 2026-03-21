@@ -28,14 +28,31 @@ printVariable(){
     printf "=\"$3\n\"\n# apply-crates-fixes end\n"
 }
 
+printFunction(){
+    # 1: filepath
+    # 2: function data to append
+    # 3: function name to append
+    # 4: if function data should be appended or not
+    # 5: function data if new
+    [ "$4" = 1 ] && printf '\t'
+    printf '# apply-crates-fixes start\n'
+    [ "$4" = 1 ] && {
+        printf '%b\n' "$2"
+        } || {
+        printf "%s{\n%b\n%b\n}\n" "$3" "$2" "$5"
+    }
+    [ "$4" = 1 ] && printf '\t'
+    printf "# apply-crates-fixes end\n"
+}
+
 sanitizeEbuild(){
     IGNORE_LINES=false
     while IFS='' read -r line; do
         case "$line" in
-            "# apply-crates-fixes start")
+            *"# apply-crates-fixes start")
                 IGNORE_LINES=true
                 ;;
-            "# apply-crates-fixes end")
+            *"# apply-crates-fixes end")
                 IGNORE_LINES=false
                 ;;
             *)
@@ -99,13 +116,105 @@ addVariableToEbuild(){
     fi
 }
 
-# prependDataToFunction(){
-#     # 1: filepath
-#     # 2: function name to check
-#     # 3: function name to append
-#     # 4: appended function data
-#     # 5: function load order
-# }
+insertNewFunction(){
+    # 1: filepath
+    # 2: function name to insert
+    # 3: function data to insert
+    # 4: function load order before the function that's gonna be inserted
+    # 5 function load order after the function that's gonna be inserted
+    # 6: function default data
+    needToAppend=false
+    functionToCheck=''
+    for func in $4; do
+        if grep -qE "^$func\\(\\)\\s*{" "$1"; then
+            needToAppend=true
+            functionToCheck="$func"
+            break
+        fi
+    done
+    if $needToAppend; then
+        # echo "needToAppend"
+        # echo "$functionToCheck"
+        FUNCTION_FOUND=false
+        while IFS='' read -r line; do
+            case "$line" in
+                "$functionToCheck(){"|"$functionToCheck() {")
+                    printf '%s\n' "$line"
+                    FUNCTION_FOUND=true
+                    ;;
+                "}")
+                    printf '%s\n\n' "$line"
+                    $FUNCTION_FOUND && {
+                        FUNCTION_FOUND=false
+                        printf '%s\n' "$( printFunction "$1" "$3" "$2" 0 "$6")"
+                    }
+                    ;;
+                *)
+                    printf '%s\n' "$line"
+                    ;;
+            esac
+        done < "$1"
+    else
+        needToPrepend=false
+        for func in $5; do
+            if grep -qE "^$func\\(\\)\\s*{" "$1"; then
+                needToPrepend=true
+                functionToCheck="$func"
+                break
+            fi
+        done
+        if $needToPrepend; then
+            # echo "needToPrepend"
+            # echo "$functionToCheck"
+            while IFS='' read -r line; do
+                case "$line" in
+                    "$functionToCheck(){"|"$functionToCheck() {")
+                        printf '%s\n\n' "$( printFunction "$1" "$3" "$2" 0 "$6")"
+                        printf '%s\n' "$line"
+                        ;;
+                    *)
+                        printf '%s\n' "$line"
+                        ;;
+                esac
+            done < "$1"
+        else
+            cat "$1"
+            printf '%s\n' "$( printFunction "$1" "$3" "$2" 0 "$6")"
+        fi
+    fi
+}
+
+prependDataToFunction(){
+    # 1: filepath
+    # 2: function name to append
+    # 3: function data to append
+    while IFS='' read -r line; do
+        case "$line" in
+            "$2(){"|"$2() {")
+                printf '%s\n' "$line"
+                printf '%s\n' "$( printFunction "$1" "$3" "$2" 1)"
+                ;;
+            *)
+                printf '%s\n' "$line"
+                ;;
+        esac
+    done < "$1"
+}
+
+createOrInsertFunction(){
+    # 1: filepath
+    # 2: function name to check
+    # 3: function name to append
+    # 4: function data to append
+    # 5: function load order before the function that's gonna be inserted
+    # 6 function load order after the function that's gonna be inserted
+    # 7: function data if new
+    if grep -qE "^$2\\(\\)\\s*\\{" "$1"; then
+        prependDataToFunction "$1" "$3" "$4"
+    else
+        insertNewFunction "$1" "$3" "$4" "$5" "$6" "$7"
+    fi
+}
 
 showHelp(){
     printf "
@@ -123,7 +232,8 @@ depends on:
 
 mainEbuildFilePath="$(realpath "$1")"
 
-deps=""
+deps=''
+compileFixes=''
 
 grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && {
     zstd_crate_version="$(sed -nE 's|^\s*zstd@?([0-9.]+)$|\1|p' "$mainEbuildFilePath" )"
@@ -136,6 +246,7 @@ grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && {
         [ -z "$zstd_version_from_zstd_sys_crate" ] &&
         die "couldn't get the minimum version for app-arch/zstd by trying to parse the zstd-sys crate"
         deps="$deps\n\t>=app-arch/zstd-$zstd_version_from_zstd_sys_crate"
+        compileFixes="$compileFixes\texport ZSTD_SYS_USE_PKG_CONFIG=1"
     }
 }
 
@@ -146,9 +257,27 @@ sanitizeEbuild "$mainEbuildFilePath" > "$mainEbuildFilePath.sanitized"
 
 if [ -n "$deps" ]; then
     addVariableToEbuild "$mainEbuildFilePath.sanitized" DEPEND DEPEND "$deps"\
-        'RESTRICT PROPERTIES REQUIRED_USE IUSE KEYWORDS SLOT LICENSE SRC_URI' 1
+        'RESTRICT PROPERTIES REQUIRED_USE IUSE KEYWORDS SLOT LICENSE SRC_URI' 1\
+        > "$mainEbuildFilePath.depsfixes"
 else
-    cat "$mainEbuildFilePath.sanitized"
+    cp "$mainEbuildFilePath.sanitized" "$mainEbuildFilePath.depsfixes"
+fi
+
+if [ -n "$compileFixes" ]; then
+    createOrInsertFunction\
+        "$mainEbuildFilePath.depsfixes"\
+        "src_compile"\
+        "src_compile"\
+        "$compileFixes"\
+        'src_configure src_prepare src_unpack pkg_setup pkg_nofetch pkg_pretend'\
+        'src_test src_install pkg_preinst pkg_postinst pkg_prerm pkg_postrm pkg_config pkg_info'\
+        '\tcargo_src_compile'\
+        > "$mainEbuildFilePath.compilefixes"
+else
+    cp "$mainEbuildFilePath.depsfixes" "$mainEbuildFilePath.compilefixes"
 fi
 
 rm "$mainEbuildFilePath.sanitized"
+rm "$mainEbuildFilePath.depsfixes"
+cat "$mainEbuildFilePath.compilefixes"
+rm "$mainEbuildFilePath.compilefixes"
