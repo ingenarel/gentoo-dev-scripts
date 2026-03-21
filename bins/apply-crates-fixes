@@ -143,9 +143,11 @@ insertNewFunction(){
                     FUNCTION_FOUND=true
                     ;;
                 "}")
-                    printf '%s\n\n' "$line"
+                    printf '%s\n' "$line"
                     $FUNCTION_FOUND && {
                         FUNCTION_FOUND=false
+                        # empty lines kind of get jumbled up
+                        # TODO: need to fix it
                         printf '%s\n' "$( printFunction "$1" "$3" "$2" 0 "$6")"
                     }
                     ;;
@@ -169,8 +171,7 @@ insertNewFunction(){
             while IFS='' read -r line; do
                 case "$line" in
                     "$functionToCheck(){"|"$functionToCheck() {")
-                        printf '%s\n\n' "$( printFunction "$1" "$3" "$2" 0 "$6")"
-                        printf '%s\n' "$line"
+                        printf '%s\n%s\n' "$( printFunction "$1" "$3" "$2" 0 "$6")" "$line"
                         ;;
                     *)
                         printf '%s\n' "$line"
