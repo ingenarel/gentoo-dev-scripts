@@ -53,5 +53,7 @@ features:
 - implements a proper load order for inserting variables and functions and tries to maintain the order from the
   devmanual
 
+created live on stream: https://www.youtube.com/@ingenarel
+
 
 
