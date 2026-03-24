@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-die(){
+die(){ # {{{
     for (( i = "${#1}"; i > 0; i-- )); do
         printf "="
     done
@@ -15,9 +15,9 @@ die(){
     echo "$0"
     echo "$secondBreak"
     exit 1
-}
+} # }}}
 
-printVariable(){
+printVariable(){ # {{{
     local varName="$1"
     local varData="$2"
     local shouldAppendVar="$3"
@@ -29,9 +29,9 @@ printVariable(){
         printf "%s" "$varName"
     }
     printf '="%b\n"\n# apply-crates-fixes end\n' "$varData"
-}
+} # }}}
 
-printFunction(){
+printFunction(){ # {{{
     local funcData="$1"
     local funcName="$2"
     local shouldInsertFuncData="$3"
@@ -50,9 +50,9 @@ printFunction(){
     }
     [[ "$shouldInsertFuncData" == 1 ]] && printf '\t'
     printf "# apply-crates-fixes end\n"
-}
+} # }}}
 
-sanitizeEbuild(){
+sanitizeEbuild(){ # {{{
     local filepath="$1"
     local ignoreLines=false
     while IFS='' read -r line; do
@@ -70,9 +70,9 @@ sanitizeEbuild(){
                 ;;
         esac
     done < "$filepath"
-}
+} # }}}
 
-addVariableToEbuild(){
+addVariableToEbuild(){ # {{{
     local filepath="$1"
     local varToCheck="$2"
     local varToAdd="$3"
@@ -137,9 +137,9 @@ addVariableToEbuild(){
             echo "loadOrder is empty" 1>&2
         fi
     fi
-}
+} # }}}
 
-insertNewFunction(){
+insertNewFunction(){ # {{{
     local filepath="$1"
     local funcName="$2"
     local funcData="$3"
@@ -225,9 +225,9 @@ insertNewFunction(){
             )"
         fi
     fi
-}
+} # }}}
 
-prependDataToFunction(){
+prependDataToFunction(){ # {{{
     local filepath="$1"
     local funcName="$2"
     local funcData="$3"
@@ -242,9 +242,9 @@ prependDataToFunction(){
                 ;;
         esac
     done < "$filepath"
-}
+} # }}}
 
-createOrInsertFunction(){
+createOrInsertFunction(){ # {{{
     local filepath="$1"
     local funcName="$2"
     local funcData="$3"
@@ -262,9 +262,9 @@ createOrInsertFunction(){
             "$afterFuncLoadOrder"\
             "$defaultFuncDataIfNotNew"
     fi
-}
+} # }}}
 
-showHelp(){
+showHelp(){ # {{{
     printf "
 apply-crates-fixes EBUILD_FILE_PATH
 
@@ -285,7 +285,7 @@ features:
 created live on stream: https://www.youtube.com/@ingenarel
 
 \n"
-}
+} # }}}
 
 { [[ -n "$1" ]] && [[ -e "$1" ]]; } || { showHelp && exit; }
 
@@ -294,7 +294,7 @@ mainEbuildFilePath="$(realpath "$1")"
 deps=''
 compileFixes=''
 
-grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && {
+grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && { # {{{
     zstd_crate_version="$(sed -nE 's|^\s*zstd@?([0-9.]+)$|\1|p' "$mainEbuildFilePath" )"
     [[ -z "$zstd_crate_version" ]] &&
     die "zstd-sys crate was detected however no zstd crate was detected"
@@ -307,7 +307,7 @@ grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && {
         deps="$deps\n\t>=app-arch/zstd-$zstd_version_from_zstd_sys_crate"
         compileFixes="$compileFixes\texport ZSTD_SYS_USE_PKG_CONFIG=1 # fix for zstd-sys crate"
     }
-}
+} # }}}
 
 # probably not needed:
 # core-foundation-sys
