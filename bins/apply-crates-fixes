@@ -340,7 +340,6 @@ if [[ -n "$compileFixes" ]]; then
     createOrInsertFunction\
         "$mainEbuildFilePath.depsfixes"\
         "src_compile"\
-        "src_compile"\
         "$compileFixes"\
         'src_configure src_prepare src_unpack pkg_setup pkg_nofetch pkg_pretend'\
         'src_test src_install pkg_preinst pkg_postinst pkg_prerm pkg_postrm pkg_config pkg_info'\
