@@ -89,8 +89,8 @@ addVariableToEbuild(){ # {{{
         # complex to implement
         case "$line" in
             "$varToCheck=\""*\")
-                ebuildData="$ebuildData$line\n"
-                ebuildData="$ebuildData$(
+                ebuildData+="$line\n"
+                ebuildData+="$(
                     printVariable\
                         "$varToAdd"\
                         "$varData"\
@@ -99,13 +99,13 @@ addVariableToEbuild(){ # {{{
                 variablePrinted=true
                 ;;
             "$varToCheck=\"")
-                ebuildData="$ebuildData$line\n"
+                ebuildData+="$line\n"
                 mulilineVar=true
                 ;;
             '"')
-                ebuildData="$ebuildData$line\n"
+                ebuildData+="$line\n"
                 $mulilineVar && {
-                    ebuildData="$ebuildData$(
+                    ebuildData+="$(
                         printVariable\
                             "$varToAdd"\
                             "$varData"\
@@ -116,7 +116,7 @@ addVariableToEbuild(){ # {{{
                 }
                 ;;
             *)
-                ebuildData="$ebuildData$line\n"
+                ebuildData+="$line\n"
         esac
     done < "$filepath"
     if $variablePrinted; then
@@ -304,8 +304,8 @@ grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && { # {{{
 		)"
         [[ -z "$zstd_version_from_zstd_sys_crate" ]] &&
         die "couldn't get the minimum version for app-arch/zstd by trying to parse the zstd-sys crate"
-        deps="$deps\n\t>=app-arch/zstd-$zstd_version_from_zstd_sys_crate"
-        compileFixes="$compileFixes\texport ZSTD_SYS_USE_PKG_CONFIG=1 # fix for zstd-sys crate"
+        deps+="\n\t>=app-arch/zstd-$zstd_version_from_zstd_sys_crate"
+        compileFixes+="\texport ZSTD_SYS_USE_PKG_CONFIG=1 # fix for zstd-sys crate"
     }
 } # }}}
 
