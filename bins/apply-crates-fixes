@@ -49,7 +49,7 @@ printFunction(){ # {{{
             "$defaultFuncDataIfNotNew"
     }
     [[ "$shouldInsertFuncData" == 1 ]] && printf '\t'
-    printf "# apply-crates-fixes end\n"
+    printf '# apply-crates-fixes end\n'
 } # }}}
 
 sanitizeEbuild(){ # {{{
@@ -138,6 +138,27 @@ addVariableToEbuild(){ # {{{
         fi
     fi
 } # }}}
+
+addInheritToEbuild(){
+    local filepath="$1"
+    local eclasses="$2"
+
+    local inheritFound=false
+    while IFS='' read -r line; do
+        case "$line" in
+            'inherit '*)
+                printf '%s\n' "$line"
+                ! $inheritFound && {
+                    printf '# apply-crates-fixes start\ninherit%b\n# apply-crates-fixes end\n' "$eclasses"
+                }
+                inheritFound=true
+                ;;
+            *)
+                printf '%s\n' "$line"
+                ;;
+        esac
+    done < "$filepath"
+}
 
 insertNewFunction(){ # {{{
     local filepath="$1"
@@ -293,20 +314,40 @@ mainEbuildFilePath="$(realpath "$1")"
 
 deps=''
 compileFixes=''
+inheritFixes=''
 
-grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && { # {{{
-    zstd_crate_version="$(sed -nE 's|^\s*zstd@?([0-9.]+)$|\1|p' "$mainEbuildFilePath" )"
+sanitizeEbuild "$mainEbuildFilePath" > "$mainEbuildFilePath.sanitized"
+
+grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
+    zstd_crate_version="$(sed -nE 's|^\s*zstd@?([0-9.]+)$|\1|p' "$mainEbuildFilePath.sanitized" )"
     [[ -z "$zstd_crate_version" ]] &&
     die "zstd-sys crate was detected however no zstd crate was detected"
     printf '%s\n%s' '0.12.2' "$zstd_crate_version" | sort --version-sort --check=quiet && {
         zstd_version_from_zstd_sys_crate="$(
-			sed -nE 's|^\s*zstd-sys@\S+\+zstd\.(\S+)|\1|p' "$mainEbuildFilePath"
+			sed -nE 's|^\s*zstd-sys@\S+\+zstd\.(\S+)|\1|p' "$mainEbuildFilePath.sanitized"
 		)"
         [[ -z "$zstd_version_from_zstd_sys_crate" ]] &&
         die "couldn't get the minimum version for app-arch/zstd by trying to parse the zstd-sys crate"
         deps+="\n\t>=app-arch/zstd-$zstd_version_from_zstd_sys_crate"
         compileFixes+="\texport ZSTD_SYS_USE_PKG_CONFIG=1 # fix for zstd-sys crate"
     }
+} # }}}
+
+grep -qE '^\s*libfuzzer-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
+    libfuzzer_crate_version="$(sed -nE 's|^\s*libfuzzer-sys@?([0-9.]+)$|\1|p' "$mainEbuildFilePath.sanitized" )"
+    [[ -z "$libfuzzer_crate_version" ]] &&
+    die "libfuzzer-sys crate was detected however the crate version couldn't be parsed"
+    case "$libfuzzer_crate_version" in
+        '0.4.12')
+            grep -qE '^inherit\s+.*llvm-r2' "$mainEbuildFilePath.sanitized" || inheritFixes+=' llvm-r2'
+            ;;
+        *)
+            {
+                echo "the current version of libfuzzer-sys crate: '$libfuzzer_crate_version' isn't supported"
+                echo "please open an ISSUE or PR if you need to unbundle the deps for that one"
+            } 1>&2
+            ;;
+    esac
 } # }}}
 
 # probably not needed:
@@ -326,14 +367,19 @@ grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath" && { # {{{
 # i'm sleep deprived and can't figure out the proper way to properly use pipes and stdins and files as args so i'm using
 # temporary files
 
-sanitizeEbuild "$mainEbuildFilePath" > "$mainEbuildFilePath.sanitized"
+if [[ -n "$inheritFixes" ]]; then
+    addInheritToEbuild "$mainEbuildFilePath.sanitized" "$inheritFixes"\
+        > "$mainEbuildFilePath.inheritfixes"
+else
+    cp "$mainEbuildFilePath.sanitized" "$mainEbuildFilePath.inheritfixes"
+fi
 
 if [[ -n "$deps" ]]; then
-    addVariableToEbuild "$mainEbuildFilePath.sanitized" DEPEND DEPEND "$deps"\
+    addVariableToEbuild "$mainEbuildFilePath.inheritfixes" DEPEND DEPEND "$deps"\
         'RESTRICT PROPERTIES REQUIRED_USE IUSE KEYWORDS SLOT LICENSE SRC_URI' 1\
         > "$mainEbuildFilePath.depsfixes"
 else
-    cp "$mainEbuildFilePath.sanitized" "$mainEbuildFilePath.depsfixes"
+    cp "$mainEbuildFilePath.inheritfixes" "$mainEbuildFilePath.depsfixes"
 fi
 
 if [[ -n "$compileFixes" ]]; then
@@ -350,6 +396,7 @@ else
 fi
 
 rm "$mainEbuildFilePath.sanitized"
+rm "$mainEbuildFilePath.inheritfixes"
 rm "$mainEbuildFilePath.depsfixes"
 cp "$mainEbuildFilePath.compilefixes" "$mainEbuildFilePath"
 rm "$mainEbuildFilePath.compilefixes"
