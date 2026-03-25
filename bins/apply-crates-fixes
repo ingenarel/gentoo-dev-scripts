@@ -338,7 +338,7 @@ grep -qE '^\s*libfuzzer-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
     [[ -z "$libfuzzer_crate_version" ]] &&
     die "libfuzzer-sys crate was detected however the crate version couldn't be parsed"
     case "$libfuzzer_crate_version" in
-        '0.4.12')
+        '0.4.12'|'0.4.11')
             grep -qE '^inherit\s+.*llvm-r2' "$mainEbuildFilePath.sanitized" || inheritFixes+=' llvm-r2'
             ;;
         *)
