@@ -45,9 +45,9 @@ printFunction(){ # {{{
     printf '# apply-crates-fixes start\n'
     # shellcheck disable=SC2015
     [[ "$shouldInsertFuncData" == 1 ]] && {
-        printf '%b\n' "$funcData"
+        printf '%b' "$funcData"
         } || {
-        printf "%s(){\n%b\n%b\n}\n"\
+        printf "%s(){\n%b%b}\n"\
             "$funcName"\
             "$funcData"\
             "$defaultFuncDataIfNotNew"
@@ -339,6 +339,7 @@ created live on stream: https://www.youtube.com/@ingenarel
 mainEbuildFilePath="$(realpath "$1")"
 
 deps=''
+# bdeps=''
 compileFixes=''
 inheritFixes=''
 llvmCompatVersions=''
@@ -357,7 +358,7 @@ grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
         [[ -z "$zstd_version_from_zstd_sys_crate" ]] &&
         die "couldn't get the minimum version for app-arch/zstd by trying to parse the zstd-sys crate"
         deps+="\n\t>=app-arch/zstd-$zstd_version_from_zstd_sys_crate"
-        compileFixes+="\texport ZSTD_SYS_USE_PKG_CONFIG=1 # fix for zstd-sys crate"
+        compileFixes+="\texport ZSTD_SYS_USE_PKG_CONFIG=1 # fix for zstd-sys crate\n"
     }
 } # }}}
 
@@ -380,6 +381,8 @@ grep -qE '^\s*libfuzzer-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
                     changeLlvmCompat=true
                 }
             } ||  llvmCompatVersions='22'
+            deps+="\n\t\$(llvm_gen_dep 'llvm-core/clang:\${LLVM_SLOT}')"
+            compileFixes+='\tCUSTOM_LIBFUZZER_PATH="$(clang --print-file-name "libclang_rt.fuzzer-${ARCH%%-*}.a" )"\n'
             ;;
         *)
             {
@@ -397,8 +400,6 @@ grep -qE '^\s*libfuzzer-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
 
 # TODO: (includes bundled deps, probably can fix? idk)
 # aws-lc-sys (https://github.com/aws/aws-lc-rs)
-# libfuzzer-sys(https://github.com/rust-fuzz/libfuzzer):
-#   - needs /usr/lib/clang/22/lib/linux/libclang_rt.fuzzer-x86_64.a, clang should be a dep
 # liblzma-sys (https://github.com/Portable-Network-Archive/liblzma-rs):
 #   - needs xz lzma stuff?
 # ring(https://crates.io/crates/ring)
@@ -436,7 +437,7 @@ if [[ -n "$compileFixes" ]]; then
         "$compileFixes"\
         'src_configure src_prepare src_unpack pkg_setup pkg_nofetch pkg_pretend'\
         'src_test src_install pkg_preinst pkg_postinst pkg_prerm pkg_postrm pkg_config pkg_info'\
-        '\tcargo_src_compile'\
+        '\tcargo_src_compile\n'\
         > "$mainEbuildFilePath.compilefixes"
 else
     cp "$mainEbuildFilePath.depsfixes" "$mainEbuildFilePath.compilefixes"
