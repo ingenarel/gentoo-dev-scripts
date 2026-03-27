@@ -348,7 +348,7 @@ changeLlvmCompat=false
 sanitizeEbuild "$mainEbuildFilePath" > "$mainEbuildFilePath.sanitized"
 
 grep -qE '^\s*zstd-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
-    zstd_crate_version="$(sed -nE 's|^\s*zstd@?([0-9.]+)$|\1|p' "$mainEbuildFilePath.sanitized" )"
+    zstd_crate_version="$(sed -nE 's|^\s*zstd@([0-9.]+)$|\1|p' "$mainEbuildFilePath.sanitized" )"
     [[ -z "$zstd_crate_version" ]] &&
     die "zstd-sys crate was detected however no zstd crate was detected"
     printf '%s\n%s' '0.12.2' "$zstd_crate_version" | sort --version-sort --check=quiet && {
