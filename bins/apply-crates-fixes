@@ -396,6 +396,15 @@ grep -qE '^\s*libfuzzer-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
     esac
 } # }}}
 
+grep -qE '^\s*aws-lc-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
+    compileFixes+='\texport AWS_LC_SYS_CFLAGS="${CFLAGS} -O0"
+\t# aws-lc-sys bundles aws-lc, which bundles quite a lot of dependencies, jitterentropy among them
+\t# https://github.com/aws/aws-lc-rs/issues/936 -> "Please add support to use system-provided aws-lc library"
+\t# jitterentropy can not be built without -O0, the script does not have the logic to unbundle dependencies right now
+\t# but what it can do is use set the AWS_LC_SYS_CFLAGS var to override CFLAGS
+'
+} # }}}
+
 # probably not needed:
 # core-foundation-sys
 # dirs-sys
