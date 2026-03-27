@@ -382,7 +382,10 @@ grep -qE '^\s*libfuzzer-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
                 }
             } ||  llvmCompatVersions='22'
             deps+="\n\t\$(llvm_gen_dep 'llvm-core/clang:\${LLVM_SLOT}')"
-            compileFixes+='\tCUSTOM_LIBFUZZER_PATH="$(clang --print-file-name "libclang_rt.fuzzer-${ARCH%%-*}.a" )"\n'
+            compileFixes+='\tCUSTOM_LIBFUZZER_PATH="$(clang --print-file-name "libclang_rt.fuzzer-${CHOST%%-*}.a" )"
+\t[[ -f "${CUSTOM_LIBFUZZER_PATH}" ]] || die "trying to set CUSTOM_LIBFUZZER_PATH failed"
+\texport CUSTOM_LIBFUZZER_PATH
+'
             ;;
         *)
             {
