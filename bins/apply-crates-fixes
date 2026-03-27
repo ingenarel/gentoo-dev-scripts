@@ -173,10 +173,10 @@ addInheritToEbuild(){ # {{{
     while IFS='' read -r line; do
         case "$line" in
             'inherit '*)
-                printf '%s\n' "$line"
                 ! $inheritFound && {
                     printf '# apply-crates-fixes start\ninherit%b\n# apply-crates-fixes end\n' "$eclasses"
                 }
+                printf '%s\n' "$line"
                 inheritFound=true
                 ;;
             *)
