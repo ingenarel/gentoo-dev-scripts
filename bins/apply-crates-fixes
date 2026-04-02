@@ -411,7 +411,6 @@ grep -qE '^\s*aws-lc-sys@' "$mainEbuildFilePath.sanitized" && { # {{{
 # jni-sys
 
 # TODO: (includes bundled deps, probably can fix? idk)
-# aws-lc-sys (https://github.com/aws/aws-lc-rs)
 # liblzma-sys (https://github.com/Portable-Network-Archive/liblzma-rs):
 #   - needs xz lzma stuff?
 # ring(https://crates.io/crates/ring)
