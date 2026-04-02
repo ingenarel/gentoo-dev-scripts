@@ -21,15 +21,15 @@ updates the LICENSE+= var
 
 fullEbuildPath="$(realpath "$1")"
 ebuildName="$( basename "$fullEbuildPath" .ebuild )"
-ebuildParentDir="$( basename "$( realpath --canonicalize-missing "$1/.." )" )"
-ebuildParentParentDir="$( basename "$( realpath --canonicalize-missing "$1/../.." )" )"
+# ebuildParentDir="$( basename "$( realpath --canonicalize-missing "$1/.." )" )"
+ebuildGroupDir="$( basename "$( realpath --canonicalize-missing "$1/../.." )" )"
 
 # echo "$ebuildName"
 # echo "$ebuildParentDir"
 # echo "$ebuildParentParentDir"
 
 ebuild "$1" manifest fetch unpack
-cd "$(find "$PORTAGE_TMPDIR/portage/$ebuildParentParentDir/$ebuildName/work" -maxdepth 1 -name "*$ebuildParentDir*" | head -n1)" || exit 1
+cd "$(sed -n -E 's|declare -x S="(.+)"|\1|p' "$PORTAGE_TMPDIR/portage/$ebuildGroupDir/$ebuildName/temp/environment")" || exit 1
 
 cp "$fullEbuildPath" "$fullEbuildPath.back"
 while IFS='' read -r line; do
