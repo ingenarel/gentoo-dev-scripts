@@ -28,7 +28,7 @@ ebuildGroupDir="$( basename "$( realpath --canonicalize-missing "$1/../.." )" )"
 # echo "$ebuildParentDir"
 # echo "$ebuildParentParentDir"
 
-ebuild "$1" manifest fetch unpack
+ebuild "$1" manifest fetch unpack prepare configure
 cd "$(sed -n -E 's|declare -x S="(.+)"|\1|p' "$PORTAGE_TMPDIR/portage/$ebuildGroupDir/$ebuildName/temp/environment")" || exit 1
 
 cp "$fullEbuildPath" "$fullEbuildPath.back"
