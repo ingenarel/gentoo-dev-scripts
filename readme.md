@@ -1,3 +1,5 @@
+### THIS PACKAGE IS GONNA BE MOVED TO MY [CODEBERG](https://codeberg.org/ingenarel-NeoJesus/gentoo-dev-scripts)
+
 # crdeps
 crdeps EBUILD_FILE_PATH LANGUAGE
 
